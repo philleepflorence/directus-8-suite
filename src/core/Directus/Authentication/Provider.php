@@ -82,7 +82,7 @@ class Provider
             throw new Exception('auth: secret key is required and it must be a string');
         }
 
-        $ttl = get_directus_setting('auth_token_ttl', ArrayUtils::get($options, 'auth.ttl', 20));
+        $ttl = ArrayUtils::get($options, 'ttl', 20);
         if (!is_numeric($ttl)) {
             throw new Exception('ttl must be a number');
         }
@@ -165,7 +165,7 @@ class Provider
      */
     public function findUserWithCredentials($email, $password, $otp = null)
     {
-        $hookEmitter = Application::getInstance()->getContainer()->get('hook_emitter');
+	    $hookEmitter = Application::getInstance()->getContainer()->get('hook_emitter');
 	    
         try {
             $user = $this->findUserWithEmail($email);
@@ -175,8 +175,8 @@ class Provider
 
         // Verify that the user has an id (exists), it returns empty user object otherwise
         if (!password_verify($password, $user->get('password'))) {
-			
-			$hookEmitter->run('auth.fail', [$user, 'app']);
+
+            $hookEmitter->run('auth.fail', [$user, 'app']);
             $this->recordActivityAndCheckLoginAttempt($user);
             throw new InvalidUserCredentialsException();
         }
@@ -442,8 +442,7 @@ class Provider
         $payload = [
             'id' => (int) $user->getId(),
             // 'group' => $user->getGroupId(),
-            'exp' => $this->getNewExpirationTime(),
-            'ttl' => $this->ttl,
+            'exp' => $this->getNewExpirationTime()
         ];
 
 
@@ -463,8 +462,7 @@ class Provider
             'type' => 'request_token',
             'id' => (int) $user->getId(),
             // 'group' => (int) $user->getGroupId(),
-            'exp' => time() + ($this->ttl * DateTimeUtils::MINUTE_IN_SECONDS),
-            'ttl' => $this->ttl,
+            'exp' => time() + (20 * DateTimeUtils::MINUTE_IN_SECONDS),
             'url' => \Directus\get_url(),
             'project' => \Directus\get_api_project_from_request()
         ];
@@ -485,8 +483,7 @@ class Provider
             'id' => (int) $user->getId(),
             'email' => $user->getEmail(),
             // TODO: Separate time expiration for reset password token
-            'exp' => $this->getNewExpirationTime(),
-            'ttl' => $this->ttl
+            'exp' => $this->getNewExpirationTime()
         ];
 
         return $this->generateToken(JWTUtils::TYPE_RESET_PASSWORD, $payload);
