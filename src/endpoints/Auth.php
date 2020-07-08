@@ -145,6 +145,7 @@ class Auth extends Route
      */
     public function storeCookieSession($request, $response, $data)
     {
+        $config = $this->container->get('config');
         $authorizationTokenObject = get_request_authorization_token($request);
         $expiry= $this->getSessionExpiryTime();
         $userSessionService = new UserSessionService($this->container);
@@ -175,7 +176,15 @@ class Auth extends Route
             ]
         );
 
-        return  $response->withAddedHeader('Set-Cookie', $cookie->toHeaders());
+        $cookieAsString = $cookie->toHeaders()[0];
+
+        $cookieAsString .= '; SameSite=' . $config->get('cookie.same_site');
+
+        if ($config->get('cookie.secure')) {
+            $cookieAsString .= '; Secure';
+        }
+
+        return  $response->withAddedHeader('Set-Cookie', $cookieAsString);
     }
 
     /**
