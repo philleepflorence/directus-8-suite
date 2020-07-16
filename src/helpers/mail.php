@@ -16,13 +16,13 @@ if (!function_exists('send_mail_with_template')) {
      * @param array $data
      * @param callable $callback
      */
-    function send_mail_with_template($viewPath, array $data, callable $callback)
+    function send_mail_with_template($viewPath, array $data, callable $callback, $params = [])
     {
         $app = Application::getInstance();
         /** @var Mailer $mailer */
         $mailer = $app->getContainer()->get('mailer');
 
-        $mailer->sendWithTemplate($viewPath, $data, $callback);
+        $mailer->sendWithTemplate($viewPath, $data, $callback, $params);
     }
 }
 
@@ -36,12 +36,12 @@ if (!function_exists('send_mail_with_layout')) {
      * @param string $contentType
      * @param callable|null $callback
      */
-    function send_mail_with_layout($layout, $template, array $data = [], $contentType = 'text/html', callable $callback = null)
+    function send_mail_with_layout($layout, $template, array $data = [], $contentType = 'text/html', callable $callback = null, $params = [])
     {
         $body = parse_body($template, $data);
         $body = parse_twig($layout, ['body' => $body]);
 
-        send_mail_with_content($body, $contentType, $callback);
+        send_mail_with_content($body, $contentType, $callback, $params);
     }
 }
 
@@ -53,13 +53,13 @@ if (!function_exists('send_mail_with_content')) {
      * @param string $contentType
      * @param callable $callback
      */
-    function send_mail_with_content($body, $contentType = 'text/html', callable $callback)
+    function send_mail_with_content($body, $contentType = 'text/html', callable $callback, $params = [])
     {
         $app = Application::getInstance();
         /** @var Mailer $mailer */
         $mailer = $app->getContainer()->get('mailer');
 
-        $mailer->sendWithContent($body, $contentType, $callback);
+        $mailer->sendWithContent($body, $contentType, $callback, $params);
     }
 }
 
