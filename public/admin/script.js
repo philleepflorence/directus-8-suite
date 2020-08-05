@@ -20,7 +20,7 @@
 	    tours: 0
     };
 
-    if (window.location.hash === "#/") window.location.hash = "#/app/ext/application";
+    if (window.location.hash === "#/") window.location.hash = "#/app/ext/dashboard";
 
     const get = function (url, params, done) {
         let request = new XMLHttpRequest();
@@ -138,14 +138,16 @@
             
             /*
             	Set Bookmark Icon - Where applicable!
-            */            
+            */ 
 
             if (this.$data.collections) {
                 let row = this.$data.collections.filter(function (currow) {
+	                if (currow.title) return currow.title.toLowerCase() === textContent;
+                    
                     return currow.collection === textContent || currow.collection === Collection;
                 });
 
-                if (Array.isArray(row)) {
+                if (Array.isArray(row) && row.length) {
                     let icon = bookmark.querySelector('span.v-icon i');
                     	row = row.shift();
 
@@ -157,7 +159,7 @@
             	Set Active Bookmark!
             */
 
-            if (window.location.hash.indexOf('#/app/collections/') === 0 && collection === Collection) 
+            if ($title && window.location.hash.indexOf('#/app/collections/') === 0 && collection === Collection) 
             	if (textContent === $title.textContent) 
             		bookmark.classList.add("router-link-active");
         });
@@ -174,7 +176,8 @@
 	                $collections.push({
 	                    collection: row.collection,
 	                    note: row.note,
-	                    icon: row.icon
+	                    icon: row.icon,
+	                    title: row.title
 	                });		                
                 }
             });
@@ -220,6 +223,8 @@
 
     this.mutation = (mutations) => {
         let hash = window.location.hash.split('?').shift();
+        
+        if (this.$hash !== hash) this.document.body.setAttribute('data-path', hash);
 
         if (this.$hash !== hash) setTimeout(this.bookmarks, 650);
 
@@ -227,6 +232,14 @@
 
         this.$hash = hash;
         this.$title = this.$page.querySelector('.page-root header.v-header .title .type-title');
+        
+        let $page = this.$page.querySelector('.page-root');
+        
+        if ($page) {
+	        let classList = [...$page.classList].join(" ");
+	        
+	        if (this.document.body.getAttribute('data-page-root') !== classList) this.document.body.setAttribute('data-page-root', classList);
+        }
 
         for (mutation of mutations) {
             let input = mutation.target.querySelector('.field input');
@@ -415,7 +428,8 @@
     };
 
     this.styles = function () {
-        let cellWidth = Math.floor((this.$page.offsetWidth - 160) * 0.2);
+	    let offset = window.innerWidth >= 1801 ? 1440 : (this.$page.offsetWidth || 1280);
+        let cellWidth = Math.floor((offset - ( 32 * 2 ) - 86) * 0.2);
         let style = document.createElement('style');
 	        style.id = 'v-table-toolbar-cell';
 	        style.innerHTML = `.v-table .toolbar .cell, .v-table .body .cell { flex-basis: ${ cellWidth }px !important; }`;
@@ -429,6 +443,10 @@
 
     this.loaded = function () {
         clearInterval(timers.loaded);
+        
+        let hash = window.location.hash.split('?').shift(); 
+        
+        this.document.body.setAttribute('data-path', hash.replace('/#', ''));
         
         this.$container = this.$page.parentElement;
 
@@ -447,6 +465,12 @@
         $logout.addEventListener('click', () => {
 	        timers.logo = window.setInterval(this.Public, 1000);
         });
+        
+        this.$menu.addEventListener('mouseover', this.scrollbar);
+        this.$menu.addEventListener('mouseout', this.scrollbar);
+        
+        this.$page.addEventListener('mouseover', this.scrollbar);
+        this.$page.addEventListener('mouseout', this.scrollbar);
 
         this.load();
 
@@ -457,13 +481,36 @@
 
     /*
 	   Custom Window Events and Authenticated Events
-   */
+	*/
+   
+	this.scrollbar = function (e) {	
+		if (this.scrolling) return false;
+			
+		if (e.currentTarget.classList.contains('main-bar')) {
+			if (e.type === 'mouseover') return e.currentTarget.classList.add('scrollbar-active');
+			else if (e.type === 'mouseout') return e.currentTarget.classList.remove('scrollbar-active');
+		}
+		
+		let content;
+		
+		if (e.currentTarget.classList.contains('body') && e.currentTarget.scrollHeight > e.currentTarget.offsetHeight) content = e.currentTarget;
+		
+		if (!content) content = e.target.closest('.layout-cards') || e.target.closest('.body') || e.target.closest('.content') || e.target.closest('.interface-icon');
+		
+		if (content && e.type === 'mouseover' && content.scrollHeight > content.offsetHeight) return content.classList.add('scrollbar-active');
+		else if (content && e.type === 'mouseout' && content.scrollHeight > content.offsetHeight) return content.classList.remove('scrollbar-active');
+		
+		let page = e.target.closest('.edit.page-root') || e.target.closest('.settings.page-root') || e.target.closest('.settings-fields.page-root') || e.target.closest('.module-page-root.page-root') || e.target.closest('.collections.page-root');
+		
+		if (page && e.type === 'mouseover') return document.body.classList.add('scrollbar-active');
+		else if (page && e.type === 'mouseout') return document.body.classList.remove('scrollbar-active');
+	};
 
     this.run = function () {
 
         let isScrolling;
         let scrollEnd = new Event('scrollend');
-
+        
         window.addEventListener('scroll', function (event) {
 
             /*
@@ -471,6 +518,10 @@
             */
 
             window.clearTimeout(isScrolling);
+            
+            if (!this.scrolling) document.body.classList.add('scrolling');
+            
+            this.scrolling = true;
 
             /*
             	Set a timeout to run after scrolling ends
@@ -479,6 +530,10 @@
             isScrolling = setTimeout(function () {
 
                 document.dispatchEvent(scrollEnd);
+                
+                document.body.classList.remove('scrolling');
+                
+                this.scrolling = false;
 
             }, 300);
 
@@ -490,9 +545,9 @@
             this.$page = document.querySelector('.directus');
             this.$logo = document.querySelector('.module-bar .logo.v-logo');
             this.$profile = document.querySelector('.module-bar a.edit-user');
-            this.$logout = document.querySelector('.module-bar button.sign-out');
-            
-            if (window.location.hash === "#/") window.location.hash = "#/app/ext/application";
+            this.$logout = document.querySelector('.module-bar button.sign-out');           
+                        
+            if (window.location.hash === "#/") window.location.hash = "#/app/ext/dashboard";
 
             if (this.$menu && this.$page && this.$logo && this.$profile) this.loaded();
             
