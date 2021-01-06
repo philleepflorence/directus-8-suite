@@ -134,6 +134,8 @@ if (!function_exists('append_storage_information')) {
         foreach ($rows as &$row) {
             $data = [];
             $ext = pathinfo($row['filename_disk'], PATHINFO_EXTENSION);
+            
+            if (!isset($row['private_hash']) || !isset($row['filename_download'])) continue;          
 
             $fileAlias = $assetURLNaming == "private_hash" ? $row['private_hash'] : $row['filename_download'];
 

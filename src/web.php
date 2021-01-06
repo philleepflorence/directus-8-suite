@@ -25,14 +25,43 @@ if (!$projectName) {
     return \Directus\create_unknown_project_app($basePath, $configData);
 }
 
+/*
+	PhilleepEdit - Extension
+	Allow the configuration of a custom message and redirection while in maintenance mode.
+	Allow access to the API from Web Applications while under maintenance.
+	Add a JSON configuration to the maintenance file.
+	PARAMTERS:
+		{
+			"redirect": <the URL HOST to redirect all none App refered API requests>,
+			"api": <the custom message to display to API requests>,
+			"app": <the custom message to display to App requests>
+		}
+*/
+
 $maintenanceFlagPath = \Directus\create_maintenanceflag_path($basePath);
 if (file_exists($maintenanceFlagPath)) {
+	$referer = $_SERVER['HTTP_REFERER'] ?? '';
+	$host = $_SERVER['HTTP_HOST'];
+	$request_uri = $_SERVER['REQUEST_URI'];
+	$mode = strpos($referer, $host) > 0 ? "app" : "api";
+	
+	$content = file_get_contents($maintenanceFlagPath);
+	$content = $content ? json_decode($content, true) : [];
+	
+	$message = $content[$mode] ?? 'The API is currently down for maintenance. Please try again later.';
+	$redirect = $content['redirect'];
+	
+	if ($redirect && $mode === "api") {
+		header("Location: {$redirect}{$request_uri}");
+		exit();
+	}
+	
     http_response_code(503);
     header('Content-Type: application/json');
     echo json_encode([
         'error' => [
             'code' => 21,
-            'message' => 'This API instance is currently down for maintenance. Please try again later.',
+            'message' => $message,
         ],
     ]);
     exit;
